@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { EXAM_DATES, COLLEGES, NEWS_CATEGORIES, Stars } from "./data/index.js";
+import { EXAM_DATES, COLLEGES, NEWS_CATEGORIES, Stars } from "./data/index.jsx";
 
 // ─── RSS HELPERS ──────────────────────────────────────────────────────────────
 function stripHtml(h = "") { return h.replace(/<[^>]*>/g, "").replace(/&[a-z#0-9]+;/gi, " ").trim(); }
