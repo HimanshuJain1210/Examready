@@ -18,16 +18,19 @@ function parseRssXml(xml) {
     }).filter(i => i.title);
   } catch { return []; }
 }
+
+// ─── FIXED: uses Vercel serverless function — no more CORS proxy failures ─────
 async function fetchRss(query) {
-  const rss = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-IN&gl=IN&ceid=IN:en`;
-  const proxies = [
-    async () => { const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rss)}`); const j = await r.json(); if(!j.contents) throw 0; return parseRssXml(j.contents); },
-    async () => { const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(rss)}`); return parseRssXml(await r.text()); },
-    async () => { const r = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rss)}&count=12`); const j = await r.json(); if(j.status!=="ok") throw 0; return j.items.map(i=>({ title:i.title?.replace(/ - [^-]+$/,"").trim(), link:i.link, desc:stripHtml(i.description||"").slice(0,200), date:i.pubDate, src:i.author||"Google News" })); },
-  ];
-  for (const p of proxies) { try { const r = await p(); if(r?.length) return r; } catch(_){} }
+  try {
+    const r = await fetch(`/api/news?q=${encodeURIComponent(query)}`);
+    if (!r.ok) throw new Error("API error");
+    const xml = await r.text();
+    const result = parseRssXml(xml);
+    if (result?.length) return result;
+  } catch (_) {}
   throw new Error("Could not fetch news. Please check your connection.");
 }
+
 function timeAgo(d) {
   try {
     const h = Math.floor((Date.now()-new Date(d))/3600000);
@@ -254,7 +257,6 @@ function RanksTab() {
     <div>
       <SectionHeader title="Opening & Closing Rank Analysis" sub="Based on 2024 data. Use as reference — actual cutoffs vary each year." />
 
-      {/* Exam filter */}
       <div style={{ display:"flex", gap:"8px", flexWrap:"wrap", marginBottom:"20px" }}>
         {exams.map(e => (
           <button key={e} onClick={() => { setSelExam(e); setSelCollege(null); }}
@@ -265,7 +267,6 @@ function RanksTab() {
       </div>
 
       <div style={{ display:"grid", gridTemplateColumns:"260px 1fr", gap:"16px" }}>
-        {/* College list */}
         <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
           {colleges.map(c => (
             <button key={c.name} onClick={() => setSelCollege(c.name)}
@@ -279,7 +280,6 @@ function RanksTab() {
           ))}
         </div>
 
-        {/* College detail */}
         {selected && (
           <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
             <div style={{ ...card, borderTop:`3px solid ${selected.color}` }}>
@@ -302,7 +302,6 @@ function RanksTab() {
               </div>
             </div>
 
-            {/* Rank/Score bars */}
             <div style={card}>
               <h4 style={{ margin:"0 0 16px", color:"#e2e8f0", fontSize:"14px" }}>
                 {isScore ? "📊 Score Cutoffs (out of 450) — BITSAT 2024" : "📊 Opening & Closing Ranks — 2024"}
@@ -318,9 +317,7 @@ function RanksTab() {
                       <span style={{ fontSize:"11px", color:"#64748b" }}>{b.category}</span>
                     </div>
                     <div style={{ position:"relative", height:"32px", background:"#0f172a", borderRadius:"8px", overflow:"hidden" }}>
-                      {/* background bar */}
                       <div style={{ position:"absolute", left:0, top:0, bottom:0, right:0, background:"#1e293b" }} />
-                      {/* rank range bar */}
                       {isScore ? (
                         <div style={{ position:"absolute", left:`${pctC}%`, top:"4px", bottom:"4px", right:`${100-pctO}%`, background:`${selected.color}60`, border:`1px solid ${selected.color}`, borderRadius:"4px", minWidth:"4px" }} />
                       ) : (
@@ -340,7 +337,6 @@ function RanksTab() {
               })}
             </div>
 
-            {/* Admission criteria */}
             <div style={{ ...card, background:"#1a1f35", borderColor:"#3730a3" }}>
               <h4 style={{ margin:"0 0 8px", color:"#818cf8", fontSize:"13px" }}>📋 ADMISSION CRITERIA</h4>
               <p style={{ margin:"0 0 10px", fontSize:"13px", color:"#c7d2fe", lineHeight:"1.7" }}>{selected.admissionCriteria}</p>
